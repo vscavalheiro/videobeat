@@ -353,43 +353,89 @@
   </script>
   
   <style scoped>
-  .container {
-    max-width: 800px;
-    margin: 0 auto;
-    text-align: center;
-    font-family: Arial, sans-serif;
-  }
-  
-  h2 {
-    color: #333;
-  }
-  
-  input[type="file"] {
-    margin: 10px 0;
-  }
-  
-  .controls {
-    margin: 10px 0;
-  }
-  
-  button {
-    margin: 5px;
-    padding: 10px 20px;
-    font-size: 16px;
-  }
-  
-  button:disabled {
-    opacity: 0.5;
-  }
-  
-  canvas {
-    margin-top: 20px;
-    border: 2px solid #ccc;
-  }
-  
-  .progress-bar {
-    width: 100%;
-    margin-top: 10px;
-  }
+/* Aplicar tema escuro no container principal */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  background-color: #1e1e1e; /* Fundo escuro */
+  color: #f5f5f5; /* Texto claro */
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+h2 {
+  color: #ffffff;
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+input[type="file"] {
+  margin: 10px 0;
+  color: #ffffff;
+  background-color: #333;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+}
+
+.controls {
+  margin: 10px 0;
+}
+
+button {
+  margin: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #1E88E5; /* Azul para botões */
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease; /* Transição suave */
+}
+
+button:hover {
+  background-color: #1565C0; /* Azul mais escuro no hover */
+  transform: scale(1.05); /* Efeito de hover para botões */
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+canvas {
+  margin-top: 20px;
+  border: 2px solid #333; /* Bordas escuras para o canvas */
+  border-radius: 10px;
+}
+
+.progress-bar {
+  width: 100%;
+  margin-top: 10px;
+  appearance: none;
+  height: 5px;
+  background-color: #444;
+  outline: none;
+  border-radius: 5px;
+}
+
+.progress-bar::-webkit-slider-thumb {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  background-color: #1E88E5; /* Thumb azul */
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.progress-bar::-webkit-slider-thumb:hover {
+  background-color: #1565C0; /* Azul mais escuro no hover */
+}
+
   </style>
   
