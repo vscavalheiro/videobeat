@@ -29,12 +29,13 @@
         selectedFile: null,
         isProcessing: false,
         beatData: [], // Armazena informações sobre cada batida
+        frequencyValues: [], // Armazena todos os valores de spectralCentroid das batidas
         audioBuffer: null,
         audioContext: null,
         isPlaying: false,
         canvasWidth: 600,
         canvasHeight: 400,
-        circleRadius: 50, // Raio base para a elipse
+        circleRadius: 100, // Aumentado de 50 para 100
         distortionX: 0, // Distorção horizontal (eixo X)
         distortionY: 0, // Distorção vertical (eixo Y)
         circleColor: '#f00',
@@ -44,12 +45,17 @@
         audioSrc: null,
         updateInterval: null,
         nextBeatIndex: 0,
+        // Thresholds calculados dinamicamente
+        frequencyThreshold: null,
+        minFrequency: null,
+        maxFrequency: null,
       }
     },
     methods: {
       handleFileUpload(event) {
         this.selectedFile = event.target.files[0]
         this.beatData = []
+        this.frequencyValues = []
         this.audioBuffer = null
         this.isPlaying = false
         this.currentTime = 0
@@ -58,13 +64,16 @@
         this.distortionX = 0
         this.distortionY = 0
         this.nextBeatIndex = 0
+        this.frequencyThreshold = null
+        this.minFrequency = null
+        this.maxFrequency = null
   
         // Revogar URL anterior se existir
         if (this.audioSrc) {
           URL.revokeObjectURL(this.audioSrc)
         }
         this.audioSrc = URL.createObjectURL(this.selectedFile)
-        
+  
         this.drawEllipse()
       },
       async processFile() {
@@ -113,7 +122,7 @@
               continue
             }
   
-            // Calcular energia média
+            // Calcular energia média local
             const localEnergy = energyHistory.reduce((a, b) => a + b) / energyHistory.length
   
             // Definir um limiar
@@ -128,12 +137,16 @@
                 intensity: energy,
               }
               this.beatData.push(beatInfo)
+              this.frequencyValues.push(spectralCentroid)
             }
   
             // Atualizar o histórico
             energyHistory.shift()
             energyHistory.push(energy)
           }
+  
+          // Calcular os thresholds de frequência dinamicamente
+          this.calculateFrequencyThresholds()
   
           this.isProcessing = false
   
@@ -143,6 +156,31 @@
         }
   
         fileReader.readAsArrayBuffer(this.selectedFile)
+      },
+      calculateFrequencyThresholds() {
+        if (this.frequencyValues.length > 0) {
+          // Ordenar as frequências
+          const sortedFrequencies = this.frequencyValues.slice().sort((a, b) => a - b)
+  
+          // Calcular as frequências mínima e máxima
+          this.minFrequency = sortedFrequencies[0]
+          this.maxFrequency = sortedFrequencies[sortedFrequencies.length - 1]
+  
+          // Calcular a mediana para usar como threshold
+          const midIndex = Math.floor(sortedFrequencies.length / 2)
+          if (sortedFrequencies.length % 2 === 0) {
+            this.frequencyThreshold = (sortedFrequencies[midIndex - 1] + sortedFrequencies[midIndex]) / 2
+          } else {
+            this.frequencyThreshold = sortedFrequencies[midIndex]
+          }
+        } else {
+          // Valores padrão se não houver frequências disponíveis
+          this.minFrequency = 0
+          this.maxFrequency = 5000
+          this.frequencyThreshold = 1000
+        }
+  
+        console.log(`Thresholds Calculados - Min: ${this.minFrequency.toFixed(2)}Hz, Max: ${this.maxFrequency.toFixed(2)}Hz, Threshold: ${this.frequencyThreshold.toFixed(2)}Hz`)
       },
       playAudio() {
         if (!this.audioSrc) {
@@ -226,18 +264,18 @@
             const frequency = beat.frequency
             const intensity = beat.intensity
   
-            // Definir limiar para graves e agudos (ajuste conforme necessário)
-            const frequencyThreshold = 5000 // Em Hz
+            // Garantir que minFrequency e maxFrequency são válidos
+            if (this.minFrequency !== null && this.maxFrequency !== null && this.frequencyThreshold !== null) {
+              // Normalizar a frequência entre 0 e 1
+              const normalizedFrequency = (frequency - this.minFrequency) / (this.maxFrequency - this.minFrequency)
+              const clampedFrequency = Math.max(0, Math.min(1, normalizedFrequency))
   
-            // Multiplicador para controlar a intensidade da distorção
-            const distortionMultiplier = 50
+              // Multiplicador para controlar a intensidade da distorção
+              const distortionMultiplier = 200 // Aumentado de 100 para 200
   
-            if (frequency < frequencyThreshold) {
-              // Batida grave, distorção vertical
-              this.distortionY = intensity * distortionMultiplier
-            } else {
-              // Batida aguda, distorção horizontal
-              this.distortionX = intensity * distortionMultiplier
+              // Calcular distorções inversamente proporcionais à frequência
+              this.distortionX = intensity * distortionMultiplier * clampedFrequency
+              this.distortionY = intensity * distortionMultiplier * (1 - clampedFrequency)
             }
   
             // Mudar a cor
@@ -246,18 +284,13 @@
           }
         }
   
-        // Gradualmente reduzir a distorção
-        if (this.distortionX > 0) {
-          this.distortionX *= 0.9
-        } else {
-          this.distortionX = 0
-        }
+        // Gradualmente reduzir as distorções
+        this.distortionX *= 0.9
+        this.distortionY *= 0.9
   
-        if (this.distortionY > 0) {
-          this.distortionY *= 0.9
-        } else {
-          this.distortionY = 0
-        }
+        // Se a distorção for muito pequena, zere
+        if (Math.abs(this.distortionX) < 0.1) this.distortionX = 0
+        if (Math.abs(this.distortionY) < 0.1) this.distortionY = 0
   
         // Redesenhar a elipse com distorção
         this.drawEllipse()
@@ -287,8 +320,8 @@
         const radiusY = baseRadius + this.distortionY
   
         // Garantir que os raios não sejam negativos e não excedam um valor máximo
-        const minRadius = 10
-        const maxRadius = baseRadius * 3
+        const minRadius = 20 // Aumentado de 10 para 20
+        const maxRadius = baseRadius * 3 // Reduzido de 4 para 3 para evitar que a elipse fique muito grande
         const finalRadiusX = Math.max(minRadius, Math.min(maxRadius, radiusX))
         const finalRadiusY = Math.max(minRadius, Math.min(maxRadius, radiusY))
   
